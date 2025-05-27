@@ -19,23 +19,32 @@ class TaskSchedulerDAG:
         if prerequisite_task == dependent_task:
             raise ValueError("A task cannot depend on itself.")
 
-        # Check for cycles (if dependent_task already has prerequisite_task as a dependency)
-        for neighbor in self.graph[dependent_task]:
-            if (neighbor == prerequisite_task) or (
-                prerequisite_task in self.graph[neighbor]
-            ):
-                raise ValueError(
-                    f"Cannot add dependency: {dependent_task} already depends on {prerequisite_task}, which creates a cycle."
-                )
+        # Check for cycles using DFS
+        def has_path(start, target, visited=None):
+            if visited is None:
+                visited = set()
+            if start == target:
+                return True
+            visited.add(start)
+            for neighbor in self.graph[start]:
+                if neighbor not in visited:
+                    if has_path(neighbor, target, visited):
+                        return True
+            return False
+
+        if has_path(dependent_task, prerequisite_task):
+            raise ValueError(
+                f"Cannot add dependency: adding {prerequisite_task} -> {dependent_task} would create a cycle."
+            )
 
         # Add the edge
         self.graph[prerequisite_task].append(dependent_task)
-        # Increment in-degree of the dependent task
         self.in_degree[dependent_task] += 1
 
     def get_execution_order(self):
+        in_degree = self.in_degree.copy()  # Copy to avoid modifying original
         # Implements Kahn's algorithm for topological sort
-        queue = [task for task in self.in_degree if self.in_degree[task] == 0]
+        queue = [task for task in in_degree if in_degree[task] == 0]
         execution_order = []
 
         while queue:
@@ -43,14 +52,11 @@ class TaskSchedulerDAG:
             execution_order.append(current_task)
 
             for neighbor_task in self.graph[current_task]:
-                self.in_degree[neighbor_task] -= 1
-                if self.in_degree[neighbor_task] == 0:
+                in_degree[neighbor_task] -= 1
+                if in_degree[neighbor_task] == 0:
                     queue.append(neighbor_task)
 
-        if len(execution_order) == len(self.graph):
-            return execution_order
-        else:
-            return "Error: Cycle detected or graph not fully processed."  # Cycle exists
+        return execution_order
 
 
 # --- Example Usage ---

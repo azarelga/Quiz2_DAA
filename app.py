@@ -124,5 +124,4 @@ with col2:
             st.session_state.execution_display = result
             st.error(result)
 
-    # The text_area's content is bound to st.session_state.execution_display by its key.
-    st.text_area("Execution Order/Errors", key="execution_display")
+    st.code(st.session_state.execution_display, language="markdown")
